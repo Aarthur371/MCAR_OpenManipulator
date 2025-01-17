@@ -7,6 +7,8 @@ import math
 from open_manipulator_msgs.srv import SetKinematicsPose, SetJointPosition, SetJointPositionRequest
 from open_manipulator_msgs.msg import KinematicsPose
 from time import sleep
+#from geometry_msgs.msg import Point
+#from std_msgs.msg import Int32
 
 # Variables
 
@@ -16,16 +18,14 @@ a3 = 124
 a4 = 126+35
 phi = math.atan2(128, 24)
 
-# rospy.init_node('move_joints_node', anonymous=True)
-# peut être à mettre plus tard pour initialiser les noeuds ros
 
 
-
-### Type de déplacement ###
+########################### Type de déplacement ####################################
 
 # Commande articulaire du robot : MGD 
 
 def move_joints(q1, q2, q3, q4, t):
+	rospy.init_node('move_robot', anonymous=True)
 	rospy.wait_for_service('/goal_joint_space_path')
 	try:
 		set_joint_position = rospy.ServiceProxy('/goal_joint_space_path', SetJointPosition)
@@ -36,7 +36,7 @@ def move_joints(q1, q2, q3, q4, t):
 		req.path_time = t
 		response = set_joint_position(req)
 		if response.is_planned:
-			rospy.loginfo("Mouvement planifié avec succès")
+			rospy.loginfo("Mouvement articulaire planifié avec succès")
 		else:
 			rospy.logwarn("Le mouvement n'a pas pu être planifié")
 	except rospy.ServiceException as e:
@@ -47,6 +47,7 @@ def move_joints(q1, q2, q3, q4, t):
 # Commande relative articulaire du robot : MGD relatif
 
 def move_joints_relative(q1, q2, q3, q4, t):
+	rospy.init_node('move_robot', anonymous=True)
 	rospy.wait_for_service('/goal_joint_space_path_from_present')
 	try:
 		set_joint_position = rospy.ServiceProxy('/goal_joint_space_path_from_present', SetJointPosition)
@@ -57,7 +58,7 @@ def move_joints_relative(q1, q2, q3, q4, t):
 		req.path_time = t
 		response = set_joint_position(req)
 		if response.is_planned:
-			rospy.loginfo("Mouvement planifié avec succès")
+			rospy.loginfo("Mouvement relatif planifié avec succès")
 		else:
 			rospy.logwarn("Le mouvement n'a pas pu être planifié")
 	except rospy.ServiceException as e:
@@ -77,10 +78,10 @@ def move_effector(angle, t):
  		req.joint_position.position = [angle]
  		req.path_time = t
  		response = set_effector_position(req)
- 		if response.is_planned:
- 			rospy.loginfo("Mouvement planifié avec succès")
- 		else:
- 			rospy.logwarn("Le mouvement n'a pas pu être planifié")
+ 		#if response.is_planned:
+ 			#rospy.loginfo("Mouvement planifié avec succès")
+ 		#else:
+ 			#rospy.logwarn("Le mouvement n'a pas pu être planifié")
 	except rospy.ServiceException as e:
  		rospy.logerr(f"Erreur lors de l'appel au service : {e}")
 
@@ -105,7 +106,7 @@ def MGI(x, y, z, t):
 		else:
 			rospy.logerr(f"Erreur lors de l'appel au service : {e}")
 
-### Déplacements simples ###
+##################### Déplacements simples ############################
 
 def effector_open():
 	move_effector(0.01, 1.0)
@@ -115,34 +116,41 @@ def effector_close():
 
 # Position pour prise d'images
 def home_pos(t):
-	move_joints(0.0, -0.2, -0.7, 2, t)
+	move_joints(0.7, -0.2, 0.0, 1.5, t)
+
+# Prendre verre	
+def take_pos(t):
+	
+	move_joints_relative(0, 0.8, 0.8, -3.0, t)
+	sleep(2)
+	move_joints_relative(0, 0.0, 0.0, 0.1, t)
+	sleep(2)
+	effector_close()
+	sleep(1)
+	move_joints_relative(0, -0.3, 0.0, 0.0, t)
 
 # Position et service du verre
 def serv_pos(t):
-	move_joints(1.4, -0.2, 0.5, -0.7, t)
-	sleep(2)
-	move_joints_relative(0.0, 0.0, 0.0, 1.6, t/2)
-	sleep(2)
+	move_joints(-1.4, 0.0, -0.5, 0.5, t)
+	sleep(3)
+	move_joints_relative(0.0, 0.1, 0.0, 2.0, t)
+
+def throw_pos(t):
+	move_joints(-1.6, 0.0, -0.5, 0.5, t)
+	effector_open()
 
 
-
-### Déplacements composés ###
+###################### Déplacements composés ###########################
 
 def home_to_serv():
 	home_pos(2.0)
 	sleep(2)
 	serv_pos(2.0)
 
+# Fonctions communication ROS
 
+current_position = 10000
 
-# Main
-
-if __name__ == '__main__':
-	try:
-		MGI(200, 0, 30, 3.0)
-	except rospy.ROSInterruptException:
-		pass
-		
 		
 		
 		
